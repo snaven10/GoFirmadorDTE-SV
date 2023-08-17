@@ -31,19 +31,17 @@ func NewError(code, message string) *Error {
 }
 
 var (
-	//no lo uso todavia
-	ErrCertNotFound = NewError("801", "No existe certificado activo")
-	ErrInvalid      = NewError("802", "No valido")
-	ErrNoPublicKey  = NewError("803", "No existe llave publica para este nit")
-	ErrUncatalogued = NewError("804", "Error no catalogado")
-	//no lo uso todavia
+	/********** Start of unused error messages block. **********/
 	ErrCertDuplicated = NewError("805", "Ya existe una certificado activo")
-	//no lo uso todavia
 	ErrCertGeneration = NewError("806", "Generación de certificados satisfactoria")
-	//no lo uso todavia
-	ErrDownloadIssue = NewError("807", "Error en la descarga de archivo")
-	//no lo uso todavia
-	ErrUploadIssue            = NewError("808", "Error en al subir el archivo")
+	ErrDownloadIssue  = NewError("807", "Error en la descarga de archivo")
+	ErrUploadIssue    = NewError("808", "Error en al subir el archivo")
+	/********** End of unused error messages block. **********/
+
+	ErrCertNotFound           = NewError("801", "No existe certificado activo")
+	ErrInvalid                = NewError("802", "No valido")
+	ErrNoPublicKey            = NewError("803", "No existe llave publica para este nit")
+	ErrUncatalogued           = NewError("804", "Error no catalogado")
 	ErrRequiredData           = NewError("809", "Son datos requeridos")
 	ErrJSONToStringConversion = NewError("810", "Problemas al convertir Json a String")
 	ErrStringToJSONConversion = NewError("811", "Problemas al convertir String a Json")
@@ -69,17 +67,13 @@ func handleDocumentSigning(c *gin.Context) {
 
 	CertificadoMH, err := parseXMLFromFile("./uploads/" + filter.Nit + ".crt")
 	if err != nil {
-		if err.Error() == "No se encontro el archivo" {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": ErrNoFile.Code, "message": ErrNoFile.Message})
-		} else {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": ErrUncatalogued.Code, "message": ErrUncatalogued.Message})
-		}
+		c.JSON(http.StatusInternalServerError, err)
 		return
 	}
 
 	jws, err := processAndSignDocument(CertificadoMH, filter.DteJson)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": ErrUncatalogued.Code, "message": ErrUncatalogued.Message, "details": err.Error()})
+		c.JSON(http.StatusInternalServerError, err)
 		return
 	}
 
@@ -90,7 +84,7 @@ func handleDocumentSigning(c *gin.Context) {
 	c.JSON(http.StatusOK, response)
 }
 
-func parseXMLFromFile(filename string) (*models.CertificadoMH, error) {
+func parseXMLFromFile(filename string) (*models.CertificadoMH, *Error) {
 	content, err := ioutil.ReadFile(filename)
 	if err != nil {
 		return nil, ErrNoFile
@@ -105,7 +99,7 @@ func parseXMLFromFile(filename string) (*models.CertificadoMH, error) {
 	return &certificado, nil
 }
 
-func processAndSignDocument(certificadoMH *models.CertificadoMH, dteJson interface{}) (string, error) {
+func processAndSignDocument(certificadoMH *models.CertificadoMH, dteJson interface{}) (string, *Error) {
 
 	valor := certificadoMH.PrivateKey.Encodied
 

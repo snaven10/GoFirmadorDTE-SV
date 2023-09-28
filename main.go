@@ -1,9 +1,12 @@
 package main
 
 import (
+	"crypto/sha512"
 	"encoding/base64"
+	"encoding/hex"
 	"encoding/json"
 	"encoding/xml"
+	"fmt"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -53,7 +56,7 @@ func main() {
 
 	r.POST("/firmardocumento/", handleDocumentSigning)
 
-	if err := r.Run(":8080"); err != nil {
+	if err := r.Run(":8113"); err != nil {
 		log.Fatal("Failed to start server: ", err)
 	}
 }
@@ -68,6 +71,18 @@ func handleDocumentSigning(c *gin.Context) {
 	CertificadoMH, err := parseXMLFromFile("./uploads/" + filter.Nit + ".crt")
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, err)
+		return
+	}
+
+	validPassword, err := getPasswordValid(CertificadoMH, filter.PasswordPri)
+
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, err)
+		return
+	}
+
+	if !validPassword {
+		c.JSON(http.StatusInternalServerError, "Password no valido: "+CertificadoMH.Nit)
 		return
 	}
 
@@ -129,4 +144,33 @@ func processAndSignDocument(certificadoMH *models.CertificadoMH, dteJson interfa
 	}
 
 	return jws, nil
+}
+
+func getPasswordValid(certificadoMH *models.CertificadoMH, originalPassword string) (bool, *Error) {
+	// Verificar si la contraseña original coincide con la contraseña cifrada desde la base de datos
+	match, err := checkPassword(originalPassword, certificadoMH.PrivateKey.Clave)
+	if err != nil {
+		fmt.Println("Error al verificar la contraseña:", err)
+		return false, ErrUncatalogued
+	}
+
+	return match, nil
+}
+
+// Función para cifrar una contraseña y devolverla como una cadena hexadecimal
+func encryptPassword(password string) (string, error) {
+	hasher := sha512.New()
+	hasher.Write([]byte(password))
+	hashedBytes := hasher.Sum(nil)
+	hashedString := hex.EncodeToString(hashedBytes)
+	return hashedString, nil
+}
+
+// Función para verificar si una contraseña cifrada coincide con una contraseña sin cifrar
+func checkPassword(plainPassword, hashedPassword string) (bool, error) {
+	hashedInput, err := encryptPassword(plainPassword)
+	if err != nil {
+		return false, err
+	}
+	return hashedInput == hashedPassword, nil
 }

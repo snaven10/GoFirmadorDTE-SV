@@ -14,6 +14,7 @@ import (
 	"firmador/factured.com/jwsutils"
 	"firmador/factured.com/keyprocessing"
 	"firmador/factured.com/models"
+	"firmador/factured.com/response"
 
 	"github.com/gin-gonic/gin"
 )
@@ -64,38 +65,40 @@ func main() {
 func handleDocumentSigning(c *gin.Context) {
 	var filter models.FirmarDocumentoFilter
 	if err := c.ShouldBindJSON(&filter); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": ErrRequiredData.Code, "message": ErrRequiredData.Message})
+		response := response.NewMensaje().Error(ErrRequiredData.Code, ErrRequiredData.Message)
+		c.JSON(http.StatusBadRequest, response)
 		return
 	}
 
 	CertificadoMH, err := parseXMLFromFile("./uploads/" + filter.Nit + ".crt")
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, err)
+		response := response.NewMensaje().Error(err.Code, err.Message)
+		c.JSON(http.StatusInternalServerError, response)
 		return
 	}
 
 	validPassword, err := getPasswordValid(CertificadoMH, filter.PasswordPri)
 
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, err)
+		response := response.NewMensaje().Error(err.Code, err.Message)
+		c.JSON(http.StatusInternalServerError, response)
 		return
 	}
 
 	if !validPassword {
-		c.JSON(http.StatusInternalServerError, "Password no valido: "+CertificadoMH.Nit)
+		response := response.NewMensaje().Error("PasswordInvalido", "Password no valido: "+CertificadoMH.Nit)
+		c.JSON(http.StatusInternalServerError, response)
 		return
 	}
 
 	jws, err := processAndSignDocument(CertificadoMH, filter.DteJson)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, err)
+		response := response.NewMensaje().Error(err.Code, err.Message)
+		c.JSON(http.StatusInternalServerError, response)
 		return
 	}
 
-	response := gin.H{
-		"status": "OK",
-		"body":   jws,
-	}
+	response := response.NewMensaje().OK(jws)
 	c.JSON(http.StatusOK, response)
 }
 

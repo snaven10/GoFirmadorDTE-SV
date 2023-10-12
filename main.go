@@ -7,9 +7,9 @@ import (
 	"encoding/json"
 	"encoding/xml"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"net/http"
+	"os"
 
 	"firmador/factured.com/jwsutils"
 	"firmador/factured.com/keyprocessing"
@@ -17,6 +17,7 @@ import (
 	"firmador/factured.com/response"
 
 	"github.com/gin-gonic/gin"
+	"github.com/joho/godotenv"
 )
 
 // Estructura de Error
@@ -53,8 +54,12 @@ var (
 )
 
 func main() {
+	err := godotenv.Load()
+	if err != nil {
+		log.Fatal("Error loading .env file")
+	}
+	gin.SetMode(gin.ReleaseMode)
 	r := gin.Default()
-
 	r.POST("/firmardocumento/", handleDocumentSigning)
 
 	if err := r.Run(":8113"); err != nil {
@@ -70,7 +75,7 @@ func handleDocumentSigning(c *gin.Context) {
 		return
 	}
 
-	CertificadoMH, err := parseXMLFromFile("./uploads/" + filter.Nit + ".crt")
+	CertificadoMH, err := parseXMLFromFile(os.Getenv("CertificadoFirmador") + filter.Nit + ".crt")
 	if err != nil {
 		response := response.NewMensaje().Error(err.Code, err.Message)
 		c.JSON(http.StatusInternalServerError, response)
@@ -103,7 +108,7 @@ func handleDocumentSigning(c *gin.Context) {
 }
 
 func parseXMLFromFile(filename string) (*models.CertificadoMH, *Error) {
-	content, err := ioutil.ReadFile(filename)
+	content, err := os.ReadFile(filename)
 	if err != nil {
 		return nil, ErrNoFile
 	}

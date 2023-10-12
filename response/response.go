@@ -16,7 +16,7 @@ func NewMensaje() *Mensaje {
 
 // OK crea una respuesta "ok" con el cuerpo especificado
 func (m *Mensaje) OK(body interface{}) ResponseBody {
-	return ResponseBody{Status: "ok", Body: body}
+	return ResponseBody{Status: "OK", Body: body}
 }
 
 // Error crea una respuesta de error con el código y mensaje especificados

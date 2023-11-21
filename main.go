@@ -10,6 +10,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"path/filepath"
 
 	"firmador/factured.com/jwsutils"
 	"firmador/factured.com/keyprocessing"
@@ -54,7 +55,13 @@ var (
 )
 
 func main() {
-	err := godotenv.Load()
+	// Obtener la ruta del directorio actual
+	dir, err := filepath.Abs(filepath.Dir(os.Args[0]))
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	err = godotenv.Load(filepath.Join(dir, ".env"))
 	if err != nil {
 		log.Fatal("Error loading .env file")
 	}
@@ -74,8 +81,8 @@ func handleDocumentSigning(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, response)
 		return
 	}
-
-	CertificadoMH, err := parseXMLFromFile(os.Getenv("CertificadoFirmador") + filter.Nit + ".crt")
+	certificadoFirmadorDir := os.Getenv("CertificadoFirmador")
+	CertificadoMH, err := parseXMLFromFile(certificadoFirmadorDir + filter.Nit + ".crt")
 	if err != nil {
 		response := response.NewMensaje().Error(err.Code, err.Message)
 		c.JSON(http.StatusInternalServerError, response)
